@@ -88,15 +88,15 @@ class Scanner(object):
    eofSym  = 0
 
    charSetSize = 256
-   maxT = 32
-   noSym = 32
+   maxT = 34
+   noSym = 34
    start = [
-     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  8,  0,  0,  8,  0,  0,
+     0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 10,  0,  0, 10,  0,  0,
      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-     0,  0,  0,  5,  0,  7,  0,  0,  9,  0,  0,  2,  0,  2,  0,  0,
-     3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  0,  0,  0, 11,  0,  0,
+     0,  0,  0,  7,  0,  9,  0,  0, 11,  0,  0,  2,  0,  2,  5,  0,
+     3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  0,  0,  0, 13,  0,  0,
      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 14,  0, 15,  0,  0,
      0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
      1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,
      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
@@ -291,6 +291,10 @@ class Scanner(object):
                buf += unicode(self.ch)
                self.NextCh()
                state = 3
+            elif self.ch == '.':
+               buf += unicode(self.ch)
+               self.NextCh()
+               state = 5
             else:
                self.t.kind = Scanner.noSym
                done = True
@@ -328,44 +332,68 @@ class Scanner(object):
                self.NextCh()
                state = 6
             else:
-               self.t.kind = 3
+               self.t.kind = 2
                done = True
          elif state == 7:
-            if not (ord(self.ch) == 13) and Scanner.ch != Scanner.buffer.EOF:
-               buf += unicode(self.ch)
-               self.NextCh()
-               state = 7
-            else:
-               self.t.kind = 4
-               done = True
-         elif state == 8:
-            if (ord(self.ch) >= 9 and ord(self.ch) <= 10
-                 or ord(self.ch) == 13):
+            if (self.ch >= '0' and self.ch <= '9'):
                buf += unicode(self.ch)
                self.NextCh()
                state = 8
             else:
-               self.t.kind = 5
+               self.t.kind = Scanner.noSym
+               done = True
+         elif state == 8:
+            if (self.ch >= '0' and self.ch <= '9'):
+               buf += unicode(self.ch)
+               self.NextCh()
+               state = 8
+            else:
+               self.t.kind = 3
                done = True
          elif state == 9:
+            if (ord(self.ch) <= 9
+                 or ord(self.ch) >= 11 and ord(self.ch) <= 12
+                 or ord(self.ch) >= 14 and ord(self.ch) <= 255 or ord(self.ch) > 256):
+               buf += unicode(self.ch)
+               self.NextCh()
+               state = 9
+            else:
+               self.t.kind = 4
+               done = True
+         elif state == 10:
+            if (ord(self.ch) >= 9 and ord(self.ch) <= 10
+                 or ord(self.ch) == 13):
+               buf += unicode(self.ch)
+               self.NextCh()
+               state = 10
+            else:
+               self.t.kind = 5
+               done = True
+         elif state == 11:
             if (ord(self.ch) <= 12
                  or ord(self.ch) >= 14 and self.ch <= '('
                  or self.ch >= '*' and ord(self.ch) <= 255 or ord(self.ch) > 256):
                buf += unicode(self.ch)
                self.NextCh()
-               state = 9
+               state = 11
             elif self.ch == ')':
                buf += unicode(self.ch)
                self.NextCh()
-               state = 10
+               state = 12
             else:
                self.t.kind = Scanner.noSym
                done = True
-         elif state == 10:
-            self.t.kind = 33
+         elif state == 12:
+            self.t.kind = 35
             done = True
-         elif state == 11:
+         elif state == 13:
             self.t.kind = 6
+            done = True
+         elif state == 14:
+            self.t.kind = 32
+            done = True
+         elif state == 15:
+            self.t.kind = 33
             done = True
 
       self.t.val = buf

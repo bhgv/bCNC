@@ -79,7 +79,8 @@ class Buffer( object ):
       if self.pos < self.bufLen:
          return unichr(ord(self.buf[self.pos]) & 0xff)    # mask out sign bits
       else:
-         return Scanner.buffer.EOF
+         return self.buffer.EOF
+#         return Scanner.buffer.EOF
 
    def getString( self, beg, end ):
       s = ''

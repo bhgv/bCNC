@@ -1624,7 +1624,8 @@ class DFA( object ):
          s1.add(hi[0]+1)
          DFA.gen.write("not ")
          DFA.PutRange(s1)
-         DFA.gen.write(" and Scanner.ch != Scanner.buffer.EOF")
+#         DFA.gen.write(" and Scanner.ch != Scanner.buffer.EOF")
+         DFA.gen.write(" and self.ch != self.buffer.EOF")
       else:
          DFA.gen.write("(")
 

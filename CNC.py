@@ -13,6 +13,8 @@ import types
 import random
 import string
 
+import time
+
 import undo
 import Unicode
 
@@ -1196,8 +1198,6 @@ class CNC:
 
             elif c == "F":
                 self.feed = value*self.unit
-                if cmd[1] == '_' or cmd[1] == '#':
-                    print "f00"
 
             elif c == "G":
                 gcode = int(value)
@@ -1594,6 +1594,7 @@ class CNC:
     # @param program a list of lines to execute
     # @return the new list of lines
     #----------------------------------------------------------------------
+    '''
     @staticmethod
     def compile(program):
         lines = []
@@ -1623,6 +1624,7 @@ class CNC:
                     newcmd.append(cmd)
             lines.append("".join(newcmd))
         return lines
+    '''
 
     #----------------------------------------------------------------------
     # code to change manually tool
@@ -2323,8 +2325,12 @@ class GCode:
            
         gparser.init_parser()
         
+#        print "> Ld 1"
+#        tt = time.time()
         gparser.set_callbacks_compiler(self)
-        
+#        print "> Ld 2 (%s)" %(time.time() - tt)
+#        tt = time.time()
+
 #        self.ln_tmp = ""
 #        
 #        def gcmd_cb(self, cmd, par=""):
@@ -2377,8 +2383,24 @@ class GCode:
         
         self.gtxt = f.read()
         
-        gparser.do_parse(self.gtxt)
+#        print "> Ld 3 (%s)" %(time.time() - tt)
+#        tt = time.time()
+        code = gparser.do_parse(self.gtxt)
+#        print "> Ld 4 (%s)" %(time.time() - tt)
+#        tt = time.time()
+        
 #        gparser.Parse(Scanner(self.gtxt))
+        if not self.blocks:
+            self.blocks.append(Block("Header"))
+        for line in code:
+            if len(line) > 0:
+                self.cnc.motionStart([line])
+                self.blocks[-1].append(line)
+                self.cnc.motionEnd()
+
+#        print "> Ld 5 (%s)" %(time.time() - tt)
+#        tt = time.time()
+
         
  #       for line in f:
  #           self._addLine(line[:-1].replace("\x0d",""))
@@ -3999,6 +4021,8 @@ class GCode:
 #         }
 #        )
         
+#        print "> P 1 "
+#        tt = time.time()
         gparser.init_parser()
         
         gparser.set_callbacks_starup_gcode(self, add)
@@ -4006,12 +4030,13 @@ class GCode:
         autolevel = not self.probe.isEmpty()
         self.initPath()
         
-#        gparser.Parse(Scanner(self.cnc.startup))
+#        print "> P 2 (%s)" %(time.time() - tt)
+#        tt = time.time()
         gparser.do_parse(self.cnc.startup)
 #        for line in CNC.compile(self.cnc.startup.splitlines()):
 #            add(line, None)
-
-#        gparser.Parse(Scanner(self.gtxt))
+#        print "> P 3 (%s)" %(time.time() - tt)
+#        tt = time.time()
 
         every = 1
         for i,block in enumerate(self.blocks):
@@ -4115,6 +4140,9 @@ class GCode:
                         newcmd.append(cmd)
 
                 add("".join(newcmd), (i,j))
+
+#        print "> P 4 (%s)" %(time.time() - tt)
+#        tt = time.time()
 
         return paths
 

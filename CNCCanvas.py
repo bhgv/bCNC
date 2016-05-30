@@ -50,7 +50,7 @@ GANTRY_R      =  4
 GANTRY_X      = GANTRY_R*2  # 10
 GANTRY_Y      = GANTRY_R    # 5
 GANTRY_H      = GANTRY_R*5  # 20
-DRAW_TIME     = 5       # Maximum draw time permitted
+DRAW_TIME     = 25       # Maximum draw time permitted
 
 INSERT_COLOR  = "Blue"
 GANTRY_COLOR  = "Red"
@@ -1751,25 +1751,53 @@ class CNCCanvas(Canvas):
                         self._items[item[0]] = i,tab
                         self.tag_lower(item)
                 # Draw block
+#                '''
+#                print "> D 1"
+#                tt = time.time()
+                block_lines = "\n".join(block)
+#                print "> D 2 (%s)" %(time.time() - tt)
+#                tt = time.time()
+                cmds = gparser.do_parse(block_lines)
+#                print "> D 3 (%s)" %(time.time() - tt)
+#                tt = time.time()
+                #print ">> parsing done"
+                
+                for j,cmd in enumerate(cmds):
+                    if cmd is None or not drawG:
+                        block.addPath(None)
+                    else:
+                        path = self.drawPath(block, cmd)
+                        self._items[path] = i,j
+                        block.addPath(path)
+                        if start and self.cnc.gcode in (1,2,3):
+                        # Mark as start the first non-rapid motion
+                            block.startPath(self.cnc.x, self.cnc.y, self.cnc.z)
+                            start = False
+                block.endPath(self.cnc.x, self.cnc.y, self.cnc.z)
+#                print "> D 4 (%s)" %(time.time() - tt)
+#                tt = time.time()
+#                '''
+                
+                '''
                 for j,line in enumerate(block):
                     n -= 1
                     if n==0:
-                        if time.time() - startTime > DRAW_TIME:
-                            raise AlarmException()
+                        #if time.time() - startTime > DRAW_TIME:
+                        #    raise AlarmException()
                         n = 1000
                     #cmd = self.cnc.parseLine(line)
-                    gparser.init_parser
-                    gparser.do_parse(line)
+                    cmd = gparser.do_parse(line)
+                    #gparser.clear_output()
                     
-                    cmd = gparser.get_cmds_draw(self)
-#                    try:
-#                       cmd = CNC.breakLine(self.gcode.evaluate(CNC.parseLine2(line)))
-#                    except AlarmException:
-#                        raise
-#                    except:
-#                        sys.stderr.write(_(">>> ERROR: %s\n")%(str(sys.exc_info()[1])))
-#                        sys.stderr.write(_("     line: %s\n")%(line))
-#                        cmd = None
+                   #cmd = gparser.get_cmds_draw(self)
+                    #try:
+                    #   cmd = CNC.breakLine(self.gcode.evaluate(CNC.parseLine2(line)))
+                    #except AlarmException:
+                    #    raise
+                    #except:
+                    #    sys.stderr.write(_(">>> ERROR: %s\n")%(str(sys.exc_info()[1])))
+                    #    sys.stderr.write(_("     line: %s\n")%(line))
+                    #    cmd = None
                     if cmd is None or not drawG:
                         block.addPath(None)
                     else:
@@ -1781,7 +1809,9 @@ class CNCCanvas(Canvas):
                             block.startPath(self.cnc.x, self.cnc.y, self.cnc.z)
                             start = False
                 block.endPath(self.cnc.x, self.cnc.y, self.cnc.z)
+                '''
         except AlarmException:
+            print "Rendering takes TOO Long. Interrupted..."
             self.status("Rendering takes TOO Long. Interrupted...")
 
     #----------------------------------------------------------------------

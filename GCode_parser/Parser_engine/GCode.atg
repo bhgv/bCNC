@@ -1,7 +1,12 @@
 COMPILER GCode
 
    import re
-   
+
+   other_param = re.compile(r"\s*([A-Za-z_01-9]+)\s*=\s*([\(\)\.\+\-\*\/\^\|\&\!01-9\s]+)$")   
+
+   callback_names = ["eol", "init", "fini", "pragma", "default", "set_param", "get_param",
+                      "aux_cmd", "no_callback"]
+
    gcode_test = True
    
    gcode_callbacks = {}
@@ -11,6 +16,10 @@ COMPILER GCode
    
    gcode_out = []
    gcode_out_last = ""
+   gcode_out_array_last = []
+   
+   
+   out_type = 0
    
    
    def set_callback_dict(self, callback_dict=None):
@@ -28,7 +37,9 @@ COMPILER GCode
       if len(self.gcode_out_last) > 0:
          self.gcode_out.append(self.gcode_out_last)
          self.gcode_out_last = ""
-      return self.gcode_out
+      out = self.gcode_out
+      self.clear_out()
+      return out
    
    
    def print_gcode_out(self):
@@ -39,10 +50,28 @@ COMPILER GCode
    def _int_init(self):
       self.gcode_params = {}
       
-      gcode_out = []
-      gcode_out_last = ""
+      self.gcode_out = []
+      self.gcode_out_last = ""
    
+   
+   def clear_out(self):
+      self.gcode_out = []
+      self.gcode_out_last = ""
+      self.gcode_out_array_last = []
 
+
+   def clear_params(self):
+      self.gcode_params = {}
+
+
+   def set_out_type_by_line(self):
+      self.out_type = 0
+       
+       
+   def set_out_type_by_cmd(self):
+      self.out_type = 1
+       
+       
    def init(self):
       self._int_init()
 
@@ -98,13 +127,33 @@ COMPILER GCode
          self._int_call("no_callback", key, param, self.getParsingPos())
       else:
          if key == "eol":
-            if len(self.gcode_out_last) > 0:
-               self.gcode_out.append(self.gcode_out_last)
-               self.gcode_out_last = ""
-         elif key:
-            self.gcode_out_last += " " + key
-            if param:
-               self.gcode_out_last += param
+            if self.out_type == 0:
+               if len(self.gcode_out_last) > 0:
+                  self.gcode_out.append(self.gcode_out_last)
+                  self.gcode_out_last = ""
+            else:
+               if len(self.gcode_out_array_last) > 0:
+                  self.gcode_out.append(self.gcode_out_array_last)
+                  self.gcode_out_array_last = []
+                  
+         elif key and key not in self.callback_names:
+            if self.out_type == 0:
+               self.gcode_out_last += " " + key
+               if param:
+                  self.gcode_out_last += param
+            else:
+               line = key
+               if param:
+                  line += param
+               self.gcode_out_array_last.append(line)
+               
+         elif key == "aux_cmd" and param:
+            pat = self.other_param.match(param)
+            if pat:
+               var_name = pat.group(1)
+               var_val_raw = pat.group(2)
+               var_val = eval(var_val_raw)
+               self.gcode_params[var_name] = str(var_val)
 
 
    def set_param(self, key, param=None):
@@ -126,17 +175,19 @@ COMPILER GCode
 IGNORECASE
 
 CHARACTERS
-  letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".
+//  letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".
+  letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".
+//  letter = "abcdefghijklmnopqrstuvwxyz".
   digit  = "0123456789".
   eol    = CHR(13) .
   lf     = CHR(10) .
   tab    = CHR(9) .
-  nonGcodeCmdBodySym = ANY - eol .
+  nonGcodeCmdBodySym = ANY - eol - lf .
   pragmaChar = ANY - eol - ")" .
 
 TOKENS
   ident  = letter {letter} .
-  number = [ "+" | "-" ] digit {digit} [ "." {digit} ] .
+  number = [ "+" | "-" ] ( digit {digit} [ "." {digit} ] | "." digit {digit} ) .
   param  = "#" digit {digit} .
   nonGcodeCmdBody = "%" { nonGcodeCmdBodySym } .
   eolTok = ( eol | lf ) { { tab } ( eol | lf ) } .
@@ -165,6 +216,7 @@ PRODUCTIONS
                                                 #self._int_init()
                                                 self.call("init") 
                                              .)
+        SYNC
         {
             ParamDecl
           |
@@ -242,6 +294,8 @@ PRODUCTIONS
   Number<out num> =
           number                             (. num =  self.token.val .)
         | param                              (. num = self.get_param(self.token.val) .)
+        | "[" ident                          (. num = self.get_param(self.token.val) .)
+          "]"
         .
         
 END GCode.

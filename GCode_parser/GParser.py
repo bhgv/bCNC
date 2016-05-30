@@ -6,6 +6,7 @@ import CNC
 from Parser_engine.Scanner import Scanner
 from Parser_engine.Parser  import Parser, Errors
 
+PRAGMA_BLOCK = re.compile(r"\(\s*(Block-name:|polygon)\s*([A-Za-z_\-01-9]*)\s*\)")
 
 class GParser:
     CALLBACK_NAMES = ("eol", "init", "fini", "pragma", "default", "set_param", "get_param",
@@ -16,18 +17,23 @@ class GParser:
 
     def init_parser(self):
         self.gparser.init()
+        
+    
+    def clear_output():
+        self.gparser.clear_out()
     
     def do_parse(self, text):
-        self.self_caller.ln_tmp = ""
-        self.gparser.Parse(Scanner(text + "\n"))
+        #self.self_caller.ln_tmp = ""
+        self.gparser.Parse(Scanner( text + "\n" ))
         
         if Errors.count == 0:
             lst = self.gparser.get_gcode_out() # get preprocessed internal gcode list
-            out = ""
-            for ln in lst:
-                out += ln + "\n"
-            return out
-        #else:
+            #out = "\n".join(lst)
+            #for ln in lst:
+            #    out += ln + "\n"
+            return lst #out
+        else:
+            return []
         #    if_errors_present_do_something_foo() # do something if errors present
 
     def set_gcode_name(self, fname):
@@ -48,6 +54,9 @@ class GParser:
         )
 
     def set_callbacks_compiler(self, self_caller):
+        self.gparser.set_out_type_by_line()
+        self.gparser.init()
+        
         #@staticmethod
         def gcmd_cb(self, cmd, par=""):
             if cmd not in GParser.CALLBACK_NAMES:
@@ -59,8 +68,9 @@ class GParser:
         def pragma_cb(self, cmd, pragma):
             #print pragma
             #self.ln_tmp += pragma
-            pat = re.match(
-                    r"\(\s*(Block-name:|polygon)\s*([A-Za-z_\-01-9]*)\s*\)", 
+            pat = PRAGMA_BLOCK.match(
+            #       re.match(
+            #        r"\(\s*(Block-name:|polygon)\s*([A-Za-z_\-01-9]*)\s*\)", 
                     pragma
             )
             if pat:
@@ -92,15 +102,18 @@ class GParser:
         
         self.set_callbacks(self_caller, 
             {
-                "pragma": pragma_cb,
-                "default": gcmd_cb,
-                "eol": eol_cb,
-                "aux_cmd": aux_cmd_cb,
+                #"pragma": pragma_cb,
+                #"default": gcmd_cb,
+                #"eol": eol_cb,
+                #"aux_cmd": aux_cmd_cb,
                 "self": self_caller,
             }
         )
     
     def set_callbacks_draw_gcode(self, self_caller):
+        self.gparser.set_out_type_by_cmd()
+        self.gparser.clear_out()
+        
         def init_cb(self, cmd):
             self.tmp_cmd_buf = []
         
@@ -115,8 +128,8 @@ class GParser:
                 
         self.set_callbacks(self_caller, 
             {
-                "init": init_cb,
-                "default": gcmd_cb,
+                #"init": init_cb,
+                #"default": gcmd_cb,
                 "self": self_caller,
             }
         )
@@ -126,6 +139,9 @@ class GParser:
     
     
     def set_callbacks_starup_gcode(self, self_caller, add_cb):
+        self.gparser.set_out_type_by_cmd()
+        self.gparser.clear_out()
+        
         def gcmd_cb(add_cb, cmd, par=""):
             #self.ln_tmp += cmd + par
             if cmd not in GParser.CALLBACK_NAMES:
@@ -137,7 +153,7 @@ class GParser:
         
         self.set_callbacks(self_caller, 
             {
-                "default": gcmd_cb,
+#                "default": gcmd_cb,
                 "self": add_cb,
             }
         )

@@ -171,15 +171,20 @@ class Parser( object ):
    _param = 3
    _nonGcodeCmdBody = 4
    _eolTok = 5
-   maxT = 32
-   _option = 33
+   maxT = 34
+   _option = 35
 
    T          = True
    x          = False
    minErrDist = 2
 
    import re
-   
+
+   other_param = re.compile(r"\s*([A-Za-z_01-9]+)\s*=\s*([\(\)\.\+\-\*\/\^\|\&\!01-9\s]+)$")   
+
+   callback_names = ["eol", "init", "fini", "pragma", "default", "set_param", "get_param",
+                      "aux_cmd", "no_callback"]
+
    gcode_test = True
    
    gcode_callbacks = {}
@@ -189,6 +194,10 @@ class Parser( object ):
    
    gcode_out = []
    gcode_out_last = ""
+   gcode_out_array_last = []
+   
+   
+   out_type = 0
    
    
    def set_callback_dict(self, callback_dict=None):
@@ -206,7 +215,9 @@ class Parser( object ):
       if len(self.gcode_out_last) > 0:
          self.gcode_out.append(self.gcode_out_last)
          self.gcode_out_last = ""
-      return self.gcode_out
+      out = self.gcode_out
+      self.clear_out()
+      return out
    
    
    def print_gcode_out(self):
@@ -217,10 +228,28 @@ class Parser( object ):
    def _int_init(self):
       self.gcode_params = {}
       
-      gcode_out = []
-      gcode_out_last = ""
+      self.gcode_out = []
+      self.gcode_out_last = ""
    
+   
+   def clear_out(self):
+      self.gcode_out = []
+      self.gcode_out_last = ""
+      self.gcode_out_array_last = []
 
+
+   def clear_params(self):
+      self.gcode_params = {}
+
+
+   def set_out_type_by_line(self):
+      self.out_type = 0
+       
+       
+   def set_out_type_by_cmd(self):
+      self.out_type = 1
+       
+       
    def init(self):
       self._int_init()
 
@@ -276,13 +305,33 @@ class Parser( object ):
          self._int_call("no_callback", key, param, self.getParsingPos())
       else:
          if key == "eol":
-            if len(self.gcode_out_last) > 0:
-               self.gcode_out.append(self.gcode_out_last)
-               self.gcode_out_last = ""
-         elif key:
-            self.gcode_out_last += " " + key
-            if param:
-               self.gcode_out_last += param
+            if self.out_type == 0:
+               if len(self.gcode_out_last) > 0:
+                  self.gcode_out.append(self.gcode_out_last)
+                  self.gcode_out_last = ""
+            else:
+               if len(self.gcode_out_array_last) > 0:
+                  self.gcode_out.append(self.gcode_out_array_last)
+                  self.gcode_out_array_last = []
+                  
+         elif key and key not in self.callback_names:
+            if self.out_type == 0:
+               self.gcode_out_last += " " + key
+               if param:
+                  self.gcode_out_last += param
+            else:
+               line = key
+               if param:
+                  line += param
+               self.gcode_out_array_last.append(line)
+               
+         elif key == "aux_cmd" and param:
+            pat = self.other_param.match(param)
+            if pat:
+               var_name = pat.group(1)
+               var_val_raw = pat.group(2)
+               var_val = eval(var_val_raw)
+               self.gcode_params[var_name] = str(var_val)
 
 
    def set_param(self, key, param=None):
@@ -348,7 +397,7 @@ class Parser( object ):
          if self.la.kind <= Parser.maxT:
             self.errDist += 1
             break
-         if self.la.kind == 33:
+         if self.la.kind == 35:
             self.call("pragma", self.la.val) 
             
 
@@ -392,13 +441,16 @@ class Parser( object ):
       #self._int_init()
       self.call("init") 
       
-      while self.StartOf(1):
+      while not (self.StartOf(1)):
+         self.SynErr(35)
+         self.Get()
+      while self.StartOf(2):
          if self.la.kind == 3:
             self.ParamDecl()
          elif self.la.kind == 4:
             self.NonGcodeCmd()
          else:
-            while self.StartOf(2):
+            while self.StartOf(3):
                self.GcodeCmd()
 
             self.Expect(5)
@@ -430,22 +482,22 @@ class Parser( object ):
       if self.la.kind == 7 or self.la.kind == 8 or self.la.kind == 9:
          cmdLetter = self.CmdNoMoveAloneLetter()
          cmd = cmdLetter 
-         if (self.la.kind == 2 or self.la.kind == 3):
+         if (self.la.kind == 2 or self.la.kind == 3 or self.la.kind == 32):
             num = self.Number()
             cmd += num 
          self.call(cmd) 
-      elif self.StartOf(3):
+      elif self.StartOf(4):
          cmdLetter = self.CmdNoMoveParamLetter()
          cmd = cmdLetter 
          num = self.Number()
          self.call(cmd, num) 
-      elif self.StartOf(4):
+      elif self.StartOf(5):
          cmdLetter = self.CmdMoveLetter()
          cmd = cmdLetter 
          num = self.Number()
          self.call(cmd, num) 
       else:
-         self.SynErr(33)
+         self.SynErr(36)
 
    def Number( self ):
       if self.la.kind == 2:
@@ -454,8 +506,13 @@ class Parser( object ):
       elif self.la.kind == 3:
          self.Get( )
          num = self.get_param(self.token.val) 
+      elif self.la.kind == 32:
+         self.Get( )
+         self.Expect(1)
+         num = self.get_param(self.token.val) 
+         self.Expect(33)
       else:
-         self.SynErr(34)
+         self.SynErr(37)
       return num
 
    def CmdNoMoveAloneLetter( self ):
@@ -467,7 +524,7 @@ class Parser( object ):
       elif self.la.kind == 9:
          self.Get( )
       else:
-         self.SynErr(35)
+         self.SynErr(38)
       cmdLetter = self.token.val.upper() 
       return cmdLetter
 
@@ -492,7 +549,7 @@ class Parser( object ):
       elif self.la.kind == 18:
          self.Get( )
       else:
-         self.SynErr(36)
+         self.SynErr(39)
       cmdLetter = self.token.val.upper() 
       return cmdLetter
 
@@ -525,7 +582,7 @@ class Parser( object ):
       elif self.la.kind == 31:
          self.Get( )
       else:
-         self.SynErr(37)
+         self.SynErr(40)
       cmdLetter = self.token.val.upper() 
       return cmdLetter
 
@@ -541,11 +598,12 @@ class Parser( object ):
 
 
    set = [
-      [T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x],
-      [x,x,x,T, T,T,x,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,T, x,x],
-      [x,x,x,x, x,x,x,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,T, x,x],
-      [x,x,x,x, x,x,x,x, x,x,T,T, T,T,T,T, T,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x],
-      [x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,T,T, T,T,T,T, T,T,T,T, x,x]
+      [T,x,x,T, T,T,x,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,T, x,x,x,x],
+      [T,x,x,T, T,T,x,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,T, x,x,x,x],
+      [x,x,x,T, T,T,x,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,T, x,x,x,x],
+      [x,x,x,x, x,x,x,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,T, x,x,x,x],
+      [x,x,x,x, x,x,x,x, x,x,T,T, T,T,T,T, T,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x],
+      [x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,T,T, T,T,T,T, T,T,T,T, x,x,x,x]
 
       ]
 
@@ -583,12 +641,15 @@ class Parser( object ):
       29 : "\"j\" expected",
       30 : "\"k\" expected",
       31 : "\"r\" expected",
-      32 : "??? expected",
-      33 : "invalid GcodeCmd",
-      34 : "invalid Number",
-      35 : "invalid CmdNoMoveAloneLetter",
-      36 : "invalid CmdNoMoveParamLetter",
-      37 : "invalid CmdMoveLetter",
+      32 : "\"[\" expected",
+      33 : "\"]\" expected",
+      34 : "??? expected",
+      35 : "this symbol not expected in GCode",
+      36 : "invalid GcodeCmd",
+      37 : "invalid Number",
+      38 : "invalid CmdNoMoveAloneLetter",
+      39 : "invalid CmdNoMoveParamLetter",
+      40 : "invalid CmdMoveLetter",
       }
 
 
