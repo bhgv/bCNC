@@ -2315,21 +2315,14 @@ class GCode:
         
         global gparser
         gparser.set_gcode_name(filename)
-#        Errors.Init(                         # initialise Errors handler
-#           filename,               # gcode name used in error messages
-#           "./",                     # directory name used to store log file
-#           False,
-#           gparser.getParsingPos,     # callback to get the position of error
-#           gparser.errorMessages      # error messages texts list
-#           )
            
         gparser.init_parser()
         
-#        print "> Ld 1"
-#        tt = time.time()
+        print "> Ld 1"
+        tt = time.time()
         gparser.set_callbacks_compiler(self)
-#        print "> Ld 2 (%s)" %(time.time() - tt)
-#        tt = time.time()
+        print "> Ld 2 (%s)" %(time.time() - tt)
+        tt = time.time()
 
 #        self.ln_tmp = ""
 #        
@@ -2383,11 +2376,11 @@ class GCode:
         
         self.gtxt = f.read()
         
-#        print "> Ld 3 (%s)" %(time.time() - tt)
-#        tt = time.time()
+        print "> Ld 3 (%s)" %(time.time() - tt)
+        tt = time.time()
         code = gparser.do_parse(self.gtxt)
-#        print "> Ld 4 (%s)" %(time.time() - tt)
-#        tt = time.time()
+        print "> Ld 4 (%s)" %(time.time() - tt)
+        tt = time.time()
         
 #        gparser.Parse(Scanner(self.gtxt))
         if not self.blocks:
@@ -4021,8 +4014,8 @@ class GCode:
 #         }
 #        )
         
-#        print "> P 1 "
-#        tt = time.time()
+        print "> P 1 "
+        tt = time.time()
         gparser.init_parser()
         
         gparser.set_callbacks_starup_gcode(self, add)
@@ -4030,13 +4023,13 @@ class GCode:
         autolevel = not self.probe.isEmpty()
         self.initPath()
         
-#        print "> P 2 (%s)" %(time.time() - tt)
-#        tt = time.time()
+        print "> P 2 (%s)" %(time.time() - tt)
+        tt = time.time()
         gparser.do_parse(self.cnc.startup)
 #        for line in CNC.compile(self.cnc.startup.splitlines()):
 #            add(line, None)
-#        print "> P 3 (%s)" %(time.time() - tt)
-#        tt = time.time()
+        print "> P 3 (%s)" %(time.time() - tt)
+        tt = time.time()
 
         every = 1
         for i,block in enumerate(self.blocks):

@@ -1752,14 +1752,14 @@ class CNCCanvas(Canvas):
                         self.tag_lower(item)
                 # Draw block
 #                '''
-#                print "> D 1"
-#                tt = time.time()
+                print "> D 1"
+                tt = time.time()
                 block_lines = "\n".join(block)
-#                print "> D 2 (%s)" %(time.time() - tt)
-#                tt = time.time()
+                print "> D 2 (%s)" %(time.time() - tt)
+                tt = time.time()
                 cmds = gparser.do_parse(block_lines)
-#                print "> D 3 (%s)" %(time.time() - tt)
-#                tt = time.time()
+                print "> D 3 (%s)" %(time.time() - tt)
+                tt = time.time()
                 #print ">> parsing done"
                 
                 for j,cmd in enumerate(cmds):
@@ -1774,8 +1774,8 @@ class CNCCanvas(Canvas):
                             block.startPath(self.cnc.x, self.cnc.y, self.cnc.z)
                             start = False
                 block.endPath(self.cnc.x, self.cnc.y, self.cnc.z)
-#                print "> D 4 (%s)" %(time.time() - tt)
-#                tt = time.time()
+                print "> D 4 (%s)" %(time.time() - tt)
+                tt = time.time()
 #                '''
                 
                 '''
