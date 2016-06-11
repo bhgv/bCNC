@@ -186,7 +186,7 @@ static wchar_t* _int_scpy(wchar_t* s){
                 _int_cb_call(py_callbacks.eol, Parser::EOL, 0, 0);
                 _int_out_tuple_append_last();
             }else{
-                _int_cb_call(py_callbacks.eol, Parser::EOL, 0, 0);
+                _int_cb_call(py_callbacks.eol, Parser::EOL, (wchar_t*)res_tuple_itm, 0);
                 PyList_Append(res_tuple, res_tuple_itm);
                 Py_DECREF(res_tuple_itm);
                 res_tuple_itm = PyList_New(0);
@@ -275,10 +275,31 @@ _int_cb_call(PyObject *foo, Parser::Cb_Type key, wchar_t *param1, wchar_t *param
     PyObject *arglist;
     PyObject *result;
 
-    if(py_callbacks.self != NULL)
-        arglist = Py_BuildValue("(Ouuu)", py_callbacks.self, cb_types_strings[key], param1, param2);
-    else
-        arglist = Py_BuildValue("(uuu)", cb_types_strings[key], param1, param2);
+    if(py_callbacks.self != NULL) {
+	switch(key){
+		case Parser::EOL:
+			Py_INCREF((PyObject*)param1);
+		        arglist = Py_BuildValue("(OuO)", py_callbacks.self, cb_types_strings[key], 
+							(PyObject*)param1);
+			break;
+			
+		default:
+		        arglist = Py_BuildValue("(Ouuu)", py_callbacks.self, cb_types_strings[key], 
+								param1, param2);
+			break;
+	}
+    }else{
+	switch(key){
+		case Parser::EOL:
+			Py_INCREF((PyObject*)param1);
+		        arglist = Py_BuildValue("(uO)", cb_types_strings[key], (PyObject*)param1);
+			break;
+			
+		default:
+		        arglist = Py_BuildValue("(uuu)", cb_types_strings[key], param1, param2);
+			break;
+        }
+    }
     result = PyObject_CallObject(foo, arglist);
     Py_DECREF(arglist);
 }

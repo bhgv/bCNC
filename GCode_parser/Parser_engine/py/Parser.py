@@ -454,7 +454,11 @@ class Parser( object ):
                self.GcodeCmd()
 
             self.Expect(5)
-            self.call("eol") 
+            if self.out_type == 0:
+               self.call("eol", self.gcode_out_last)
+            else:
+               self.call("eol", self.gcode_out_array_last)
+            
 
       self.Expect(0)
       self.call("fini")

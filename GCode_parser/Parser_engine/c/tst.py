@@ -13,12 +13,17 @@ def test():
         print "op=%s: %s %s" % (op, par1, par2)
         return None
 
+    def eol_cb(op, par1):
+        print "op=%s: %s" % (op, par1)
+        return None
+
     #GCode.set_out_type_by_line()
     GCode.set_out_type_by_cmd()
 
     GCode.set_callback_dict(
         {
             "cmd": cmd_cb,
+	    "eol": eol_cb,
         }
     )
 

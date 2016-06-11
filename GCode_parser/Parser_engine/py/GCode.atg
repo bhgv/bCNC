@@ -223,7 +223,12 @@ PRODUCTIONS
             NonGcodeCmd
           |
             { GcodeCmd }
-            eolTok                           (. self.call("eol") .)
+            eolTok                           (. 
+                                                if self.out_type == 0:
+                                                   self.call("eol", self.gcode_out_last)
+                                                else:
+                                                   self.call("eol", self.gcode_out_array_last)
+                                             .)
         }
         EOF                                  (. 
                                                 self.call("fini")
